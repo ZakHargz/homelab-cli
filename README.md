@@ -1,5 +1,8 @@
 # homelab-cli
 
+[![CI](https://github.com/ZakHargz/homelab-cli/actions/workflows/ci.yml/badge.svg)](https://github.com/ZakHargz/homelab-cli/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+
 A small CLI for managing a self-hosted homelab as a set of declarative
 `app.yml` manifests, generated into Docker Compose. You write one YAML file per
 app describing its image, port, hostname, and how it should be exposed and
@@ -273,3 +276,8 @@ CI runs typecheck + a sanity build on every push/PR. Pushing a `v*` tag
 triggers the release workflow, which cross-compiles `linux-x64`,
 `linux-arm64`, and `darwin-arm64` binaries and attaches them to a new GitHub
 Release.
+
+## License
+
+[MIT](./LICENSE)
+
