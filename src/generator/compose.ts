@@ -215,7 +215,16 @@ export function generateComposeFile(
     }
   }
 
-  return { name: "homelab", services, networks };
+  // Pinned to "compose" (matching platform/compose/, where infrastructure.yml and
+  // generated-apps.yml live) rather than "homelab" or letting Compose infer it from
+  // cwd. This MUST match whatever Compose project name your pre-existing,
+  // hand-brought-up infra containers were originally created under — otherwise every
+  // one of them looks like a naming conflict to Compose (container names are unique
+  // per Docker daemon, not per project, so a mismatched project label means Compose
+  // tries to create a brand new container with an already-taken name instead of
+  // recognizing the existing one as already deployed). Check with:
+  //   docker inspect <container> --format '{{index .Config.Labels "com.docker.compose.project"}}'
+  return { name: "compose", services, networks };
 }
 
 export function serializeComposeFile(compose: ComposeFile): string {
