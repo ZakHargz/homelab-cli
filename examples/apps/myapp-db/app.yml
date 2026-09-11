@@ -1,0 +1,28 @@
+name: myapp-db
+
+image:
+  repository: postgres
+  tag: 16-alpine
+
+service:
+  port: 5432
+
+# "internal" apps get no hostname, no Traefik router, no public label at all — they
+# get their own dedicated, isolated Docker network (net-myapp-db), only reachable by
+# apps that declare `dependsOn: [myapp-db]` (see apps/myapp/app.yml).
+exposure:
+  type: internal
+
+auth:
+  type: none
+
+storage:
+  - name: data
+    mount: /var/lib/postgresql/data   # -> host path data/myapp-db/data
+
+environment:
+  POSTGRES_USER: postgres
+  POSTGRES_DB: myapp
+
+secrets:
+  envFrom: secrets/myapp-db.enc.yml   # must contain POSTGRES_PASSWORD: ...

@@ -1,0 +1,3 @@
+creation_rules:
+  - path_regex: secrets/.*\.enc\.yml$
+    age: age1xyz...   # replace with your real age public key from `age-keygen`

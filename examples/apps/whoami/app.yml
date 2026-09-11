@@ -1,0 +1,15 @@
+name: whoami
+
+image:
+  repository: traefik/whoami
+  tag: v1.10
+
+service:
+  port: 80
+
+exposure:
+  type: public
+  hostname: whoami.example.com
+
+auth:
+  type: none

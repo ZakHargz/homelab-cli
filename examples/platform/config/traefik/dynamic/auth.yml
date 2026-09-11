@@ -1,0 +1,12 @@
+# Example forward-auth middleware, referenced by `platform/profiles/protected.yml`
+# as `forward-auth@file`. Swap `address` for whatever auth provider you actually run
+# (Authentik, Authelia, oauth2-proxy, etc — anything that implements Traefik's
+# forwardAuth contract: a 2xx response means "allow", anything else means "deny").
+http:
+  middlewares:
+    forward-auth:
+      forwardAuth:
+        address: "http://my-auth-provider:9000/verify"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - X-Auth-Username

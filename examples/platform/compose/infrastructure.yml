@@ -1,0 +1,32 @@
+services:
+  traefik:
+    image: traefik:v3.0
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedByDefault=false
+      - --providers.file.directory=/etc/traefik/dynamic
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ../config/traefik/dynamic:/etc/traefik/dynamic:ro
+    networks:
+      - public
+      - protected
+
+# "internal"-typed apps never appear here — homelab-cli generates their dedicated
+# isolated network (net-<appname>) itself. Only the networks referenced by your
+# platform/profiles/*.yml files need defining by hand, here.
+networks:
+  public:
+    name: public
+    driver: bridge
+  protected:
+    name: protected
+    driver: bridge

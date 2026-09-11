@@ -1,0 +1,13 @@
+name: protected
+
+router:
+  entrypoint: websecure
+  tls: true
+
+# Referenced with the `@file` suffix because it's defined in Traefik's *file*
+# provider (../config/traefik/dynamic/auth.yml), not discovered from Docker labels.
+# See that file for what it needs to point at.
+middlewares:
+  - forward-auth@file
+
+network: protected

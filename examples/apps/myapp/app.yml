@@ -1,0 +1,34 @@
+name: myapp
+
+image:
+  repository: ghcr.io/you/myapp
+  tag: "1.0.0"                       # never "latest" — the validator rejects it
+
+service:
+  port: 3000
+
+exposure:
+  type: protected                    # gated by whatever forward-auth middleware
+                                      # platform/profiles/protected.yml points at
+  hostname: myapp.example.com
+
+auth:
+  type: authentik-forward-auth       # one of: authentik-forward-auth | oidc | native | none
+                                      # (the name is historical — it works with any
+                                      # forward-auth provider your protected profile
+                                      # points at, not literally just Authentik)
+
+dependsOn:
+  - myapp-db                         # auto-attaches to myapp-db's dedicated network
+                                      # so this app can reach it at myapp-db:5432
+
+storage:
+  - name: uploads
+    mount: /app/uploads               # -> host path data/myapp/uploads
+
+environment:
+  NODE_ENV: production
+
+secrets:
+  envFrom: secrets/myapp.enc.yml     # must contain DATABASE_URL: ... and any other
+                                      # real secrets this app needs

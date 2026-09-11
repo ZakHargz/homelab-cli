@@ -1,0 +1,9 @@
+name: public
+
+router:
+  entrypoint: websecure
+  tls: true
+
+middlewares: []
+
+network: public
