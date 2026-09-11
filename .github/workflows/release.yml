@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Build all targets
+        run: |
+          bun run build:linux-x64
+          bun run build:linux-arm64
+          bun run build:darwin-arm64
+
+      - name: Create release and upload binaries
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            bin/homelab-linux-x64 \
+            bin/homelab-linux-arm64 \
+            bin/homelab-darwin-arm64 \
+            --title "${{ github.ref_name }}" \
+            --generate-notes

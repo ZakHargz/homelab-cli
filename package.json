@@ -1,0 +1,24 @@
+{
+  "name": "homelab-cli",
+  "version": "1.0.0",
+  "description": "Homelab management CLI",
+  "module": "src/cli.ts",
+  "type": "module",
+  "scripts": {
+    "build:cli": "bun build --compile --outfile bin/homelab src/cli.ts",
+    "build:linux-x64": "bun build --compile --target=bun-linux-x64 --outfile bin/homelab-linux-x64 src/cli.ts",
+    "build:linux-arm64": "bun build --compile --target=bun-linux-arm64 --outfile bin/homelab-linux-arm64 src/cli.ts",
+    "build:darwin-arm64": "bun build --compile --target=bun-darwin-arm64 --outfile bin/homelab-darwin-arm64 src/cli.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "citty": "^0.2.2",
+    "yaml": "^2.5.0",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "@types/node": "^26.4.1",
+    "typescript": "^7"
+  }
+}
