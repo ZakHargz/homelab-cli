@@ -1,14 +1,15 @@
 import { join, relative } from "node:path";
 import YAML from "yaml";
 import type { AppManifest } from "../schema";
-import { AUTH_MIDDLEWARE_MAP } from "../schema";
+import { AUTH_MIDDLEWARE_MAP, dependsOnName, dependsOnCondition } from "../schema";
 import type { LoadedHomelab } from "../loader";
 import { resolveProfile } from "../loader";
 
 interface ComposeService {
   container_name: string;
   image: string;
-  command?: string;
+  command?: string | string[];
+  entrypoint?: string | string[];
   ports?: string[];
   volumes?: string[];
   environment?: Record<string, string>;
@@ -20,7 +21,14 @@ interface ComposeService {
   cap_add?: string[];
   cap_drop?: string[];
   read_only?: boolean;
-  depends_on?: string[];
+  depends_on?: string[] | Record<string, { condition: string }>;
+  healthcheck?: {
+    test: string | string[];
+    interval?: string;
+    timeout?: string;
+    retries?: number;
+    start_period?: string;
+  };
 }
 
 interface ComposeFile {
@@ -62,7 +70,8 @@ function resolveNetworksForApp(app: AppManifest, loaded: LoadedHomelab): Set<str
     networks.add(resolveProfile(loaded, app.exposure.type).network);
   }
 
-  for (const depName of app.dependsOn) {
+  for (const depEntry of app.dependsOn) {
+    const depName = dependsOnName(depEntry);
     const dep = loaded.apps.find((a) => a.name === depName)!; // existence guaranteed by validator
     if (dep.exposure.type === "internal") {
       networks.add(internalNetworkName(dep.name));
@@ -99,9 +108,12 @@ function ownNetworkForApp(app: AppManifest, loaded: LoadedHomelab): string {
  */
 function buildTraefikLabels(app: AppManifest, profileName: string, loaded: LoadedHomelab): Record<string, string | boolean> {
   if (app.exposure.type === "internal") return {};
+  // schema-level refine guarantees service/auth are present whenever exposure.type !== "internal"
+  const service = app.service!;
+  const auth = app.auth!;
 
   const profile = resolveProfile(loaded, profileName);
-  const extraMiddlewares = AUTH_MIDDLEWARE_MAP[app.auth.type] ?? [];
+  const extraMiddlewares = AUTH_MIDDLEWARE_MAP[auth.type] ?? [];
   const allMiddlewares = [...profile.middlewares, ...extraMiddlewares];
 
   const labels: Record<string, string | boolean> = {
@@ -109,7 +121,7 @@ function buildTraefikLabels(app: AppManifest, profileName: string, loaded: Loade
     [`traefik.http.routers.${app.name}.rule`]: `Host(\`${app.exposure.hostname}\`)`,
     [`traefik.http.routers.${app.name}.entrypoints`]: profile.router.entrypoint,
     [`traefik.http.routers.${app.name}.tls`]: profile.router.tls,
-    [`traefik.http.services.${app.name}.loadbalancer.server.port`]: String(app.service.port),
+    [`traefik.http.services.${app.name}.loadbalancer.server.port`]: String(service.port),
   };
 
   if (allMiddlewares.length > 0) {
@@ -125,6 +137,47 @@ function buildTraefikLabels(app: AppManifest, profileName: string, loaded: Loade
   }
 
   return labels;
+}
+
+/**
+ * Builds this app's compose `depends_on`. Uses the short array form (plain compose
+ * "started" semantics) when every entry is a bare name / default condition — matching
+ * prior generator output byte-for-byte for every app that doesn't use conditions.
+ * Switches to compose's long-form object syntax, with the `service_` prefix compose
+ * requires (e.g. "healthy" -> "service_healthy"), as soon as any entry asks for a
+ * non-default condition.
+ */
+function buildDependsOn(app: AppManifest): ComposeService["depends_on"] {
+  if (app.dependsOn.length === 0) return undefined;
+
+  const needsLongForm = app.dependsOn.some((e) => dependsOnCondition(e) !== "started");
+  if (!needsLongForm) {
+    return app.dependsOn.map(dependsOnName);
+  }
+
+  const longForm: Record<string, { condition: string }> = {};
+  for (const entry of app.dependsOn) {
+    longForm[dependsOnName(entry)] = { condition: `service_${dependsOnCondition(entry)}` };
+  }
+  return longForm;
+}
+
+/**
+ * Maps an app's optional `healthcheck` block 1:1 onto compose's `healthcheck:` field.
+ * Omitted entirely when unset, so compose falls back to the image's own HEALTHCHECK
+ * (or no healthcheck at all) rather than us silently asserting empty defaults.
+ */
+function buildHealthcheck(app: AppManifest): ComposeService["healthcheck"] {
+  const hc = app.healthcheck;
+  if (!hc) return undefined;
+
+  return {
+    test: hc.test,
+    interval: hc.interval,
+    timeout: hc.timeout,
+    retries: hc.retries,
+    start_period: hc.startPeriod,
+  };
 }
 
 /**
@@ -170,13 +223,15 @@ export function generateComposeFile(
       container_name: app.name,
       image: `${app.image.repository}:${app.image.tag}`,
       command: app.command,
+      entrypoint: app.entrypoint,
       volumes: volumes.length > 0 ? volumes : undefined,
       environment: Object.keys(app.environment).length > 0 ? app.environment : undefined,
       networks: [...resolveNetworksForApp(app, loaded)],
       labels: { ...app.labels, ...buildTraefikLabels(app, app.exposure.type, loaded) },
-      restart: "unless-stopped",
+      restart: app.restart ?? "unless-stopped",
       ...buildSecurityFields(app),
-      depends_on: app.dependsOn.length > 0 ? app.dependsOn : undefined,
+      healthcheck: buildHealthcheck(app),
+      depends_on: buildDependsOn(app),
     };
 
     const envFile = secretsEnvFiles.get(app.name);

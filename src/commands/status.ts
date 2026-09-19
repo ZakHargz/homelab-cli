@@ -96,7 +96,7 @@ export async function status({ root }: StatusOptions): Promise<void> {
       name: app.name,
       status: running.get(app.name) ?? "not deployed",
       exposure: app.exposure.type,
-      auth: app.auth.type,
+      auth: app.auth?.type ?? "-",
       group: app.group ?? "",
     }))
   );

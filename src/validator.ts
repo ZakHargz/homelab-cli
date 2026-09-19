@@ -1,4 +1,5 @@
 import type { LoadedHomelab } from "./loader";
+import { dependsOnName } from "./schema";
 
 export interface ValidationIssue {
   app?: string;
@@ -15,7 +16,7 @@ export interface ValidationResult {
  * ordered list of app names (A -> B -> A) if one exists, otherwise null.
  */
 function findDependencyCycle(loaded: LoadedHomelab): string[] | null {
-  const graph = new Map(loaded.apps.map((a) => [a.name, a.dependsOn]));
+  const graph = new Map(loaded.apps.map((a) => [a.name, a.dependsOn.map(dependsOnName)]));
   const visiting = new Set<string>();
   const visited = new Set<string>();
   const path: string[] = [];
@@ -87,7 +88,8 @@ export async function validateHomelab(
   // dependsOn: unknown-dependency check (full set — a dependency can be declared by
   // an app outside the --onlyApp scope but still needs to resolve to a real app)
   for (const app of loaded.apps) {
-    for (const dep of app.dependsOn) {
+    for (const depEntry of app.dependsOn) {
+      const dep = dependsOnName(depEntry);
       if (!loaded.apps.some((a) => a.name === dep)) {
         issues.push({
           app: app.name,
