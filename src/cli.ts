@@ -9,6 +9,7 @@ import { validate } from "./commands/validate";
 import { destroy } from "./commands/destroy";
 import { status } from "./commands/status";
 import { groupDeploy, groupRestart, groupLogs } from "./commands/group";
+import { groupRelease } from "./commands/release";
 
 /** Homelab root: defaults to cwd, override with HOMELAB_ROOT env var. */
 const root = process.env.HOMELAB_ROOT ?? process.cwd();
@@ -106,10 +107,37 @@ const groupLogsCmd = defineCommand({
   },
 });
 
+const groupReleaseCmd = defineCommand({
+  meta: {
+    name: "release",
+    description: "Point a group's image tags at one commit SHA, then deploy it (migrations run first)",
+  },
+  args: {
+    name: { type: "positional", required: true, description: "group name" },
+    sha: { type: "positional", required: false, description: "full 40-char commit SHA" },
+    latest: { type: "boolean", required: false, default: false, description: "release the commit the :latest image was built from" },
+    previous: { type: "boolean", required: false, default: false, description: "roll back to the tags before the last release" },
+    repo: { type: "string", required: false, description: "only touch apps using this image repository" },
+    dryRun: { type: "boolean", required: false, default: false, description: "show the plan, change nothing" },
+  },
+  async run({ args }) {
+    await groupRelease({
+      root,
+      group: args.name,
+      sha: args.sha,
+      latest: args.latest,
+      previous: args.previous,
+      repository: args.repo,
+      dryRun: args.dryRun,
+    });
+  },
+});
+
 const group = defineCommand({
   meta: { name: "group", description: "Operations across every app sharing a group value" },
   subCommands: {
     deploy: groupDeployCmd,
+    release: groupReleaseCmd,
     restart: groupRestartCmd,
     logs: groupLogsCmd,
   },

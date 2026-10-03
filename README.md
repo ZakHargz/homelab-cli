@@ -189,11 +189,21 @@ dependsOn:
   - myapp-db
 ```
 
-Generates a plain Compose `depends_on` entry (no `condition:` support — your
-app should handle a transient connection retry on startup) and auto-attaches
+Generates a Compose `depends_on` entry and auto-attaches
 this app to `myapp-db`'s network so it's reachable by container name
 (`myapp-db:5432`), even if `myapp-db` is `internal`-typed and otherwise
 completely unreachable from anywhere else.
+
+Wait conditions use the object form: `started` (the default for bare names),
+`healthy` (the dependency needs a `healthcheck`) and `completed_successfully`
+(for one-shot jobs such as a migration, which should set `restart: "no"`):
+
+```yaml
+dependsOn:
+  - myapp-db
+  - name: myapp-migrate
+    condition: completed_successfully   # compose won't start this app unless it exits 0
+```
 
 ### Extra networks (`extraNetworks`)
 
@@ -245,6 +255,10 @@ and its dedicated database).
 | `homelab app destroy <name>` | `docker compose rm -sf` for one app |
 | `homelab status` | Table of every app's deployment state |
 | `homelab group deploy/restart/logs <group>` | Same as the single-app commands, scoped to every app sharing a `group` |
+| `homelab group release <group> <sha>` | Points every `<sha>` / `<prefix>-<sha>` image tag in the group at one full commit SHA (e.g. the app and its `installer-<sha>` migrate job; databases are left alone), then deploys the group. Edits only the tag line of each `app.yml`, restores them if the deploy fails |
+| `homelab group release <group> --latest` | Same, using the commit the `:latest` image was built from (read from its `org.opencontainers.image.revision` label) |
+| `homelab group release <group> --previous` | Roll back to the tags from before the last release (previous tags are kept in `platform/state/releases/<group>.json`; gitignore `platform/state/`) |
+| add `--dry-run` | Show the plan, change nothing |
 
 ## Example: infrastructure.yml
 

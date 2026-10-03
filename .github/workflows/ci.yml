@@ -22,5 +22,8 @@ jobs:
       - name: Typecheck
         run: bun run typecheck
 
+      - name: Test
+        run: bun test
+
       - name: Build (sanity check)
         run: bun build --compile --outfile bin/homelab src/cli.ts
